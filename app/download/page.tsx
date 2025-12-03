@@ -11,7 +11,7 @@ import { useCardStore } from "@/store/use-card-store";
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { BanBangkhaeLink } from "@/components/main-page/banbangkhae-link";
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, X, Loader2 } from "lucide-react";
 import { WebLink } from "@/components/common/weblink";
 import { saveAs } from 'file-saver';
 
@@ -19,28 +19,36 @@ export default function CardSelection() {
   const { selectedCardId, senderName, blessingMessage } = useCardStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
-
-
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownload = async () => {
-    if (cardRef.current) {
+    if (cardRef.current && !isGenerating) {
+      setIsGenerating(true);
       try {
+        // Add a small delay to allow the UI to update and show the loader
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const canvas = await html2canvas(cardRef.current, {
           backgroundColor: null,
           scale: 2,
-          useCORS: true, // Add this to help with image loading
+          useCORS: true,
         });
+
+        const dataUrl = canvas.toDataURL("image/png");
+        setGeneratedImage(dataUrl);
 
         canvas.toBlob((blob) => {
           if (blob) {
             saveAs(blob, "father-day-card.png");
-            setShowModal(true);
-          } else {
-            console.error("Failed to generate blob");
           }
         });
+
+        setShowModal(true);
       } catch (error) {
         console.error("Failed to download image:", error);
+      } finally {
+        setIsGenerating(false);
       }
     }
   };
@@ -78,12 +86,22 @@ export default function CardSelection() {
             </p>
           </div>
         </div>
-        <Accept onClick={handleDownload} text="บันทึกรูป" />
+        <Accept onClick={handleDownload} text={isGenerating ? "กำลังสร้างรูป..." : "บันทึกรูป"} />
         <WebLink href="/all-blessings" target="_self" className="text-[#1e3a8a] font-bold font-itim text-xl hover:underline">
           ดูคำอวยพรทั้งหมด
         </WebLink>
       </main>
       <CuteLeftArrow width={100} height={100} link="/blessing" />
+
+      {/* Loading Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-2xl flex flex-col items-center gap-4 shadow-xl animate-in zoom-in-95">
+            <Loader2 className="w-12 h-12 text-[#ffb830] animate-spin" />
+            <p className="text-xl font-bold text-[#1e3a8a] font-itim">กำลังจัดเตรียมการ์ด...</p>
+          </div>
+        </div>
+      )}
 
       {
         showModal && (
@@ -91,17 +109,30 @@ export default function CardSelection() {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm cursor-pointer animate-in fade-in duration-300"
             onClick={() => setShowModal(false)}
           >
-            <div className="relative animate-in zoom-in-95 duration-300">
+            <div className="relative animate-in zoom-in-95 duration-300 flex flex-col items-center gap-4 p-4">
               <button className="absolute -top-4 -right-4 z-50 bg-white text-red-500 rounded-full p-2 shadow-lg hover:bg-gray-100 transition-transform hover:scale-110">
                 <X size={24} strokeWidth={3} />
               </button>
-              <Image
-                src="/card/card-6.png"
-                alt="Thank you"
-                width={500}
-                height={500}
-                className="rounded-2xl shadow-2xl"
-              />
+              {generatedImage ? (
+                <>
+                  <img
+                    src={generatedImage}
+                    alt="Generated Card"
+                    className="w-full max-w-[500px] h-auto rounded-2xl shadow-2xl"
+                  />
+                  <p className="text-white font-bold text-lg text-center bg-black/50 p-2 rounded-lg">
+                    บันทึกรูปเรียบร้อย! <br /> (หากรูปไม่ขึ้น ให้กดค้างที่รูปเพื่อบันทึก)
+                  </p>
+                </>
+              ) : (
+                <Image
+                  src="/card/card-6.png"
+                  alt="Thank you"
+                  width={500}
+                  height={500}
+                  className="rounded-2xl shadow-2xl"
+                />
+              )}
             </div>
           </div>
         )

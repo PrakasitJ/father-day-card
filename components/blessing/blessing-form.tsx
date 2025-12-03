@@ -4,13 +4,18 @@ import { useCardStore } from "@/store/use-card-store";
 import { useRouter } from "next/navigation";
 
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+
 export function BlessingForm() {
     const { senderName, setSenderName, blessingMessage, setBlessingMessage, selectedCardId } =
         useCardStore();
     const router = useRouter();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleDone = async () => {
-        if (senderName && blessingMessage) {
+        if (senderName && blessingMessage && !isSubmitting) {
+            setIsSubmitting(true);
             try {
                 await fetch('/api/blessings', {
                     method: 'POST',
@@ -23,12 +28,12 @@ export function BlessingForm() {
                         cardId: selectedCardId,
                     }),
                 })
+                router.push("/download");
             } catch (error) {
                 console.error('Failed to save blessing:', error)
+                setIsSubmitting(false);
             }
         }
-
-        router.push("/download");
     };
 
     return (
@@ -39,7 +44,8 @@ export function BlessingForm() {
                     type="text"
                     value={senderName}
                     onChange={(e) => setSenderName(e.target.value)}
-                    className="h-12 w-full rounded-lg border-2 border-[#fcd34d] bg-[#fef3c7] px-4 text-lg text-[#1e3a8a] outline-none focus:border-[#fbbf24] font-itim"
+                    disabled={isSubmitting}
+                    className="h-12 w-full rounded-lg border-2 border-[#fcd34d] bg-[#fef3c7] px-4 text-lg text-[#1e3a8a] outline-none focus:border-[#fbbf24] font-itim disabled:opacity-50"
                 />
             </div>
 
@@ -48,15 +54,24 @@ export function BlessingForm() {
                 <textarea
                     value={blessingMessage}
                     onChange={(e) => setBlessingMessage(e.target.value)}
-                    className="h-32 w-full resize-none rounded-lg border-2 border-[#fcd34d] bg-[#fef3c7] p-4 text-lg text-[#1e3a8a] outline-none focus:border-[#fbbf24] font-itim"
+                    disabled={isSubmitting}
+                    className="h-32 w-full resize-none rounded-lg border-2 border-[#fcd34d] bg-[#fef3c7] p-4 text-lg text-[#1e3a8a] outline-none focus:border-[#fbbf24] font-itim disabled:opacity-50"
                 />
             </div>
 
             <button
                 onClick={handleDone}
-                className="mt-4 h-12 w-full rounded-full bg-[#60a5fa] text-xl font-bold text-white transition-colors hover:bg-[#3b82f6] font-pridi"
+                disabled={isSubmitting || !senderName || !blessingMessage}
+                className="mt-4 h-12 w-full rounded-full bg-[#60a5fa] text-xl font-bold text-white transition-colors hover:bg-[#3b82f6] font-pridi flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-                เสร็จ
+                {isSubmitting ? (
+                    <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        กำลังบันทึก...
+                    </>
+                ) : (
+                    "เสร็จ"
+                )}
             </button>
 
             <p className="text-center text-xs text-gray-500 font-sans">
