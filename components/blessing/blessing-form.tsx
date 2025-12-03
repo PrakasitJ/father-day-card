@@ -27,7 +27,7 @@ export function BlessingForm() {
                 console.error('Failed to save blessing:', error)
             }
         }
-        console.log("Saved:", { senderName, blessingMessage });
+
         router.push("/download");
     };
 

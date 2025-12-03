@@ -1,156 +1,133 @@
-import { DuckDBInstance } from '@duckdb/node-api';
-import path from 'path';
+import postgres from 'postgres';
 
-const dbPath = path.join(process.cwd(), 'dev.duckdb');
-console.log('Database path:', dbPath);
+const sql = postgres({
+    host: process.env.POSTGRES_HOST,
+    port: Number(process.env.POSTGRES_PORT),
+    database: process.env.POSTGRES_DATABASE,
+    username: process.env.POSTGRES_USERNAME,
+    password: process.env.POSTGRES_PASSWORD,
+});
 
-let instance: DuckDBInstance | null = null;
-let connection: any = null;
+let initPromise: Promise<void> | null = null;
 
-// Add global type for development caching
-declare global {
-    var prismaGlobal: undefined | { instance: DuckDBInstance; connection: any };
+async function ensureSchema() {
+    if (!initPromise) {
+        initPromise = (async () => {
+            await sql`CREATE SCHEMA IF NOT EXISTS father_day`;
+            await sql`
+                CREATE TABLE IF NOT EXISTS father_day."Blessing" (
+                    id SERIAL PRIMARY KEY,
+                    "senderName" TEXT NOT NULL,
+                    "blessingMessage" TEXT NOT NULL,
+                    "cardId" TEXT NOT NULL,
+                    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            `;
+        })();
+    }
+    return initPromise;
 }
 
-async function getDb() {
-    if (globalThis.prismaGlobal?.connection) {
-        return globalThis.prismaGlobal.connection;
-    }
-
-    if (connection) return connection;
-
-    try {
-        instance = await DuckDBInstance.create(dbPath);
-        connection = await instance.connect();
-
-        // Create sequence for ID auto-increment
-        await connection.run("CREATE SEQUENCE IF NOT EXISTS blessing_id_seq");
-
-        // Create table
-        await connection.run(`
-      CREATE TABLE IF NOT EXISTS Blessing (
-        id INTEGER PRIMARY KEY DEFAULT nextval('blessing_id_seq'),
-        senderName TEXT NOT NULL,
-        blessingMessage TEXT NOT NULL,
-        cardId TEXT NOT NULL,
-        createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-        console.log('Connected to DuckDB and verified schema');
-
-        globalThis.prismaGlobal = { instance, connection };
-
-        return connection;
-    } catch (error) {
-        console.error('Failed to initialize DuckDB:', error);
-        throw error;
-    }
-}
-
-// Export helper functions
 export const prisma = {
     blessing: {
         create: async (data: { data: { senderName: string; blessingMessage: string; cardId: string } }) => {
-            const db = await getDb();
-
-            // DuckDB insert with returning
-            const result = await db.run(
-                `INSERT INTO Blessing (senderName, blessingMessage, cardId, createdAt) 
-         VALUES (?, ?, ?, current_timestamp) 
-         RETURNING id, createdAt`,
-                [data.data.senderName, data.data.blessingMessage, data.data.cardId]
-            );
-
-            const rows = await result.getRows();
-            const row = rows[0];
-
+            await ensureSchema();
+            const [result] = await sql`
+                INSERT INTO father_day."Blessing" ("senderName", "blessingMessage", "cardId")
+                VALUES (${data.data.senderName}, ${data.data.blessingMessage}, ${data.data.cardId})
+                RETURNING id, "createdAt"
+            `;
             return {
-                id: Number(row[0]),
+                id: result.id,
                 ...data.data,
-                createdAt: new Date(row[1])
-            }
+                createdAt: result.createdAt
+            };
         },
         findMany: async (params?: { where?: { cardId?: string }, orderBy?: any, skip?: number, take?: number }) => {
-            const db = await getDb();
-            let query = 'SELECT * FROM Blessing'
-            const queryParams: any[] = []
+            await ensureSchema();
 
+            let conditions = sql``;
             if (params?.where?.cardId) {
-                query += ' WHERE cardId = ?'
-                queryParams.push(params.where.cardId)
+                conditions = sql`WHERE "cardId" = ${params.where.cardId}`;
             }
 
-            query += ' ORDER BY createdAt DESC'
+            // Pagination and ordering
+            const limit = params?.take ? sql`LIMIT ${params.take}` : sql``;
+            const offset = params?.skip ? sql`OFFSET ${params.skip}` : sql``;
 
-            if (params?.take) {
-                query += ' LIMIT ?'
-                queryParams.push(params.take)
-            }
+            const rows = await sql`
+                SELECT * FROM father_day."Blessing"
+                ${conditions}
+                ORDER BY "createdAt" DESC
+                ${limit}
+                ${offset}
+            `;
 
-            if (params?.skip) {
-                query += ' OFFSET ?'
-                queryParams.push(params.skip)
-            }
-
-            const result = await db.run(query, queryParams);
-            const rows = await result.getRows();
-
-            return rows.map((row: any[]) => ({
-                id: Number(row[0]),
-                senderName: String(row[1]),
-                blessingMessage: String(row[2]),
-                cardId: String(row[3]),
-                createdAt: new Date(row[4])
-            }))
+            return rows.map(row => ({
+                id: row.id,
+                senderName: row.senderName,
+                blessingMessage: row.blessingMessage,
+                cardId: row.cardId,
+                createdAt: row.createdAt
+            }));
         },
         count: async (params?: { where?: { cardId?: string } }) => {
-            const db = await getDb();
-            let query = 'SELECT COUNT(*) FROM Blessing'
-            const queryParams: any[] = []
-
+            await ensureSchema();
+            let conditions = sql``;
             if (params?.where?.cardId) {
-                query += ' WHERE cardId = ?'
-                queryParams.push(params.where.cardId)
+                conditions = sql`WHERE "cardId" = ${params.where.cardId}`;
             }
 
-            const result = await db.run(query, queryParams);
-            const rows = await result.getRows();
-            return Number(rows[0][0]);
+            const [result] = await sql`
+                SELECT COUNT(*) as count FROM father_day."Blessing"
+                ${conditions}
+            `;
+            return Number(result.count);
         },
         delete: async (params: { where: { id: number } }) => {
-            const db = await getDb();
-            await db.run('DELETE FROM Blessing WHERE id = ?', [params.where.id]);
+            await ensureSchema();
+            await sql`
+                DELETE FROM father_day."Blessing"
+                WHERE id = ${params.where.id}
+            `;
             return { success: true };
         },
         deleteMany: async (params: { where: { id: { in: number[] } } }) => {
-            const db = await getDb();
+            await ensureSchema();
             if (params.where.id.in.length === 0) return { count: 0 };
 
-            const placeholders = params.where.id.in.map(() => '?').join(',');
-            await db.run(`DELETE FROM Blessing WHERE id IN (${placeholders})`, params.where.id.in);
-            return { count: params.where.id.in.length };
+            const result = await sql`
+                DELETE FROM father_day."Blessing"
+                WHERE id IN ${sql(params.where.id.in)}
+            `;
+            return { count: result.count };
         },
         update: async (params: { where: { id: number }, data: { senderName?: string, blessingMessage?: string } }) => {
-            const db = await getDb();
-            const updates: string[] = [];
-            const values: any[] = [];
+            await ensureSchema();
 
-            if (params.data.senderName !== undefined) {
-                updates.push('senderName = ?');
-                values.push(params.data.senderName);
-            }
-            if (params.data.blessingMessage !== undefined) {
-                updates.push('blessingMessage = ?');
-                values.push(params.data.blessingMessage);
-            }
+            // Construct update object
+            const updateData: any = {};
+            if (params.data.senderName !== undefined) updateData.senderName = params.data.senderName;
+            if (params.data.blessingMessage !== undefined) updateData.blessingMessage = params.data.blessingMessage;
 
-            if (updates.length === 0) return null;
+            if (Object.keys(updateData).length === 0) return null;
 
-            values.push(params.where.id);
-            await db.run(`UPDATE Blessing SET ${updates.join(', ')} WHERE id = ?`, values);
+            const [result] = await sql`
+                UPDATE father_day."Blessing"
+                SET ${sql(updateData)}
+                WHERE id = ${params.where.id}
+                RETURNING *
+            `;
 
-            return { id: params.where.id, ...params.data };
+            if (!result) return null;
+
+            return {
+                id: result.id,
+                senderName: result.senderName,
+                blessingMessage: result.blessingMessage,
+                cardId: result.cardId,
+                createdAt: result.createdAt
+            };
         }
     }
 }
