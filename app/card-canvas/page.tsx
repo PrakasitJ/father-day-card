@@ -1,9 +1,9 @@
 'use client'
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
-export default function CardCanvas() {
+function CardCanvasContent() {
     const searchParams = useSearchParams();
     const cardId = searchParams.get("cardId") || "card-1";
     const senderName = searchParams.get("senderName") || "";
@@ -68,5 +68,13 @@ export default function CardCanvas() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function CardCanvas() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <CardCanvasContent />
+        </Suspense>
     );
 }
