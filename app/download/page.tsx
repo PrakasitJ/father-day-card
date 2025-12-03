@@ -13,11 +13,14 @@ import html2canvas from "html2canvas";
 import { BanBangkhaeLink } from "@/components/main-page/banbangkhae-link";
 import { ArrowRight, X } from "lucide-react";
 import { WebLink } from "@/components/common/weblink";
+import { saveAs } from 'file-saver';
 
 export default function CardSelection() {
   const { selectedCardId, senderName, blessingMessage } = useCardStore();
   const cardRef = useRef<HTMLDivElement>(null);
   const [showModal, setShowModal] = useState(false);
+
+
 
   const handleDownload = async () => {
     if (cardRef.current) {
@@ -25,13 +28,17 @@ export default function CardSelection() {
         const canvas = await html2canvas(cardRef.current, {
           backgroundColor: null,
           scale: 2,
+          useCORS: true, // Add this to help with image loading
         });
-        const dataUrl = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "father-day-card.png";
-        link.click();
-        setShowModal(true);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            saveAs(blob, "father-day-card.png");
+            setShowModal(true);
+          } else {
+            console.error("Failed to generate blob");
+          }
+        });
       } catch (error) {
         console.error("Failed to download image:", error);
       }
