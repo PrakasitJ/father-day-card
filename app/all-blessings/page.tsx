@@ -4,6 +4,8 @@ import { CuteLeftArrow } from "@/components/common/cute-left-arrow";
 import Image from "next/image";
 import { Pagination } from "@/components/common/pagination";
 
+import { Happyfatherday } from "@/components/main-page/happyfatherday";
+
 export const dynamic = 'force-dynamic';
 
 const ITEMS_PER_PAGE = 12;
@@ -32,11 +34,14 @@ export default async function AllBlessings({
 
     return (
         <PageLayout className="overflow-y-auto h-auto min-h-screen py-20">
-            <div className="container mx-auto px-4 z-50">
-                <h1 className="text-4xl font-bold text-[#1e3a8a] font-pridi text-center mb-10">
+            <div className="container mx-auto px-4 z-50 flex flex-col items-center">
+                <div className="w-64">
+                    <Happyfatherday />
+                </div>
+                <h1 className="text-4xl font-bold text-[#1e3a8a] font-pridi text-center mb-10 mt-4">
                     คำอวยพรทั้งหมด
                 </h1>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 w-full">
                     {blessings?.map((blessing: { id: number, cardId: string, blessingMessage: string, senderName: string }) => (
                         <div key={blessing.id} className="relative aspect-[3/4] w-full">
                             <Image
