@@ -8,7 +8,7 @@ import { CuteLeftArrow } from "@/components/common/cute-left-arrow";
 export default function CardSelection() {
   return (
     <PageLayout>
-      <main className="flex flex-col w-full h-full items-center justify-center gap-20 z-10 relative">
+      <main className="flex flex-col w-full h-full items-center justify-center gap-20 z-10 relative px-8 pb-10">
         <ChooseCardText />
         <Stepper1 />
         <CardSelector />

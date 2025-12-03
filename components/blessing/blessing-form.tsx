@@ -32,7 +32,7 @@ export function BlessingForm() {
     };
 
     return (
-        <div className="flex w-[500px] flex-col gap-6 rounded-3xl bg-[#ffeebb] p-8 shadow-lg">
+        <div className="flex w-full max-w-[500px] flex-col gap-6 rounded-3xl bg-[#ffeebb] p-8 shadow-lg">
             <div className="flex flex-col gap-2">
                 <label className="text-lg font-bold text-[#1e3a8a] font-pridi">ชื่อ</label>
                 <input

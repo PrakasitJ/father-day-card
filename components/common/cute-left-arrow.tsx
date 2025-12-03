@@ -9,6 +9,7 @@ export function CuteLeftArrow({ width, height, link }: { width: number, height: 
                 alt="Cute Left Arrow"
                 width={width}
                 height={height}
+                className="w-16 h-auto md:w-auto"
             />
         </Link>
     );

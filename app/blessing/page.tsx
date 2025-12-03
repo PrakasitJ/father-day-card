@@ -15,7 +15,7 @@ export default function Blessing() {
   const { selectedCardId, senderName, blessingMessage } = useCardStore();
   return (
     <PageLayout>
-      <div className="flex flex-col md:flex-row items-center justify-center gap-40 z-10 relative px-4">
+      <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-40 z-10 relative px-8 pb-10">
         <main className="flex flex-col items-center justify-center gap-10">
           <ChooseCardText />
           <Stepper2 />

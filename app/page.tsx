@@ -18,7 +18,7 @@ export default function Home() {
         quality={100}
       />
       <Butterfly />
-      <main className="flex flex-col w-full h-full items-center justify-center gap-20 z-10 relative">
+      <main className="flex flex-col w-full h-full items-center justify-center gap-20 z-10 relative px-8 pb-10">
         <BanBangkhaeLink />
         <Happyfatherday />
         <InviteText />
